@@ -81,6 +81,7 @@ jobs:
           mkdir linux-amd64
           mkdir linux-arm64
           mkdir android-arm64_v8a
+          mkdir android-x86_64
           mkdir windows-amd64
           mkdir releases
       - name: Build linux-amd64 shared library
@@ -108,6 +109,13 @@ jobs:
           cp build/libargon2_ffi.so android-arm64_v8a/
       - name: Cleanup action
         run: rm -rf CMakeFiles/ CMakeCache.txt build/*
+      - name: Build android-x86_64 shared library
+        run: |
+          cmake CMakeLists.txt -DCMAKE_SYSTEM_NAME=Android -DCMAKE_ANDROID_ARCH_ABI=x86_64 -DCMAKE_ANDROID_NDK=/home/runner/work/argon2_ffi/argon2_ffi/android-ndk-r25 -DCMAKE_ANDROID_STL_TYPE=c++_shared
+          cmake --build . --config Release
+          cp build/libargon2_ffi.so android-x86_64/
+      - name: Cleanup action
+        run: rm -rf CMakeFiles/ CMakeCache.txt build/*
       - name: Build windows-amd64 dynamic library
         run: |
           cmake CMakeLists.txt -DCMAKE_TOOLCHAIN_FILE=mingw-w64-x86_64.cmake
@@ -118,9 +126,10 @@ jobs:
           zip -jr libargon2_ffi-linux-amd64.zip linux-amd64/*
           zip -jr libargon2_ffi-linux-arm64.zip linux-arm64/*
           zip -jr libargon2_ffi-android-arm64_v8a.zip android-arm64_v8a/*
+          zip -jr libargon2_ffi-android-x86_64.zip android-x86_64/*
           zip -jr libargon2_ffi-windows-amd64.zip windows-amd64/*
       - name: Copy archived files to releases
-        run: cp libargon2_ffi-linux-amd64.zip libargon2_ffi-linux-arm64.zip libargon2_ffi-android-arm64_v8a.zip libargon2_ffi-windows-amd64.zip releases/
+        run: cp libargon2_ffi-linux-amd64.zip libargon2_ffi-linux-arm64.zip libargon2_ffi-android-arm64_v8a.zip libargon2_ffi-android-x86_64.zip libargon2_ffi-windows-amd64.zip releases/
       - uses: actions/upload-artifact@v3
         with:
           name: linux-artifacts
@@ -138,7 +147,7 @@ jobs:
           - name: Prepare releases directory
             run: |
               mkdir releases
-              cp argon2_ffi.xcframework.zip libargon2_ffi-darwin-universal.zip libargon2_ffi-wasm.zip libargon2_ffi-linux-amd64.zip libargon2_ffi-linux-arm64.zip libargon2_ffi-android-arm64_v8a.zip libargon2_ffi-windows-amd64.zip releases/
+              cp argon2_ffi.xcframework.zip libargon2_ffi-darwin-universal.zip libargon2_ffi-wasm.zip libargon2_ffi-linux-amd64.zip libargon2_ffi-linux-arm64.zip libargon2_ffi-android-arm64_v8a.zip libargon2_ffi-android-x86_64.zip libargon2_ffi-windows-amd64.zip releases/
           - name: Generate checksums
             run: |
               cd releases
