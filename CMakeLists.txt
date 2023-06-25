@@ -22,6 +22,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIB_PATH})
 
 set(public_headers "${CMAKE_CURRENT_SOURCE_DIR}/src/argon2.h")
 
+set(CMAKE_XCODE_ATTRIBUTE_EXCLUDED_ARCHS[sdk=iphonesimulator*] "")
 set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "" FORCE)
 
 add_library(argon2_ffi
