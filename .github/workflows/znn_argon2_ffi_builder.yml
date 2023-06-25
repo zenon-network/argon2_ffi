@@ -26,6 +26,7 @@ jobs:
           mkdir ios64
           mkdir simulator64
           mkdir simulatorarm64
+          mkdir simulator
           mkdir darwin
           mkdir wasm
           mkdir releases
@@ -58,10 +59,14 @@ jobs:
           cp build/argon2_ffi.framework/Versions/C/argon2_ffi darwin/libargon2_ffi.dylib
       - name: Cleanup action
         run: rm -rf CMakeFiles/ CMakeCache.txt build/*
+      - name: Create simulator
+        run: |
+          cp -r ./simulator64/argon2_ffi.framework simulator/
+          lipo -create simulator64/argon2_ffi.framework/argon2_ffi simulatorarm64/argon2_ffi.framework/argon2_ffi -output simulator/argon2_ffi.framework/argon2_ffi
       - name: Build wasm
         run: emcc -O3 -s WASM=1 -s EXTRA_EXPORTED_RUNTIME_METHODS='["cwrap"]' -s EXPORT_ALL=1 -s LINKABLE=1 src/argon2.c src/blake2/blake2b.c src/encoding.c src/core.c src/genkat.c src/ref.c src/thread.c -o wasm/argon2_ffi.js
       - name: Create xcframework
-        run: xcodebuild -create-xcframework -framework darwin/argon2_ffi.framework -framework ios64/argon2_ffi.framework -framework simulator64/argon2_ffi.framework -framework simulatorarm64/argon2_ffi.framework -output argon2_ffi.xcframework
+        run: xcodebuild -create-xcframework -framework darwin/argon2_ffi.framework -framework ios64/argon2_ffi.framework -framework simulator/argon2_ffi.framework -output argon2_ffi.xcframework
       - name: Archive files
         run: |
           zip -r argon2_ffi.xcframework.zip argon2_ffi.xcframework
