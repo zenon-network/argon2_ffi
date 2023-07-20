@@ -25,6 +25,8 @@ jobs:
         run: |
           mkdir ios64
           mkdir simulator64
+          mkdir simulatorarm64
+          mkdir simulator
           mkdir darwin
           mkdir wasm
           mkdir releases
@@ -42,6 +44,13 @@ jobs:
           cp -R build/Release/argon2_ffi.framework/ simulator64/argon2_ffi.framework
       - name: Cleanup action
         run: rm -rf CMakeFiles/ CMakeCache.txt build/*
+      - name: Build ios-simulator-arm64 framework
+        run: |
+          cmake CMakeLists.txt -G Xcode -DCMAKE_TOOLCHAIN_FILE=ios-cmake/ios.toolchain.cmake -DPLATFORM=SIMULATORARM64
+          cmake --build . --config Release
+          cp -R build/Release/argon2_ffi.framework/ simulatorarm64/argon2_ffi.framework
+      - name: Cleanup action
+        run: rm -rf CMakeFiles/ CMakeCache.txt build/*
       - name: Build darwin framework
         run: |
           cmake CMakeLists.txt
@@ -50,10 +59,14 @@ jobs:
           cp build/argon2_ffi.framework/Versions/C/argon2_ffi darwin/libargon2_ffi.dylib
       - name: Cleanup action
         run: rm -rf CMakeFiles/ CMakeCache.txt build/*
+      - name: Create simulator
+        run: |
+          cp -r ./simulator64/argon2_ffi.framework simulator/
+          lipo -create simulator64/argon2_ffi.framework/argon2_ffi simulatorarm64/argon2_ffi.framework/argon2_ffi -output simulator/argon2_ffi.framework/argon2_ffi
       - name: Build wasm
         run: emcc -O3 -s WASM=1 -s EXTRA_EXPORTED_RUNTIME_METHODS='["cwrap"]' -s EXPORT_ALL=1 -s LINKABLE=1 src/argon2.c src/blake2/blake2b.c src/encoding.c src/core.c src/genkat.c src/ref.c src/thread.c -o wasm/argon2_ffi.js
       - name: Create xcframework
-        run: xcodebuild -create-xcframework -framework darwin/argon2_ffi.framework -framework ios64/argon2_ffi.framework -framework simulator64/argon2_ffi.framework -output argon2_ffi.xcframework
+        run: xcodebuild -create-xcframework -framework darwin/argon2_ffi.framework -framework ios64/argon2_ffi.framework -framework simulator/argon2_ffi.framework -output argon2_ffi.xcframework
       - name: Archive files
         run: |
           zip -r argon2_ffi.xcframework.zip argon2_ffi.xcframework
@@ -81,6 +94,7 @@ jobs:
           mkdir linux-amd64
           mkdir linux-arm64
           mkdir android-arm64_v8a
+          mkdir android-x86_64
           mkdir windows-amd64
           mkdir releases
       - name: Build linux-amd64 shared library
@@ -108,6 +122,13 @@ jobs:
           cp build/libargon2_ffi.so android-arm64_v8a/
       - name: Cleanup action
         run: rm -rf CMakeFiles/ CMakeCache.txt build/*
+      - name: Build android-x86_64 shared library
+        run: |
+          cmake CMakeLists.txt -DCMAKE_SYSTEM_NAME=Android -DCMAKE_ANDROID_ARCH_ABI=x86_64 -DCMAKE_ANDROID_NDK=/home/runner/work/argon2_ffi/argon2_ffi/android-ndk-r25 -DCMAKE_ANDROID_STL_TYPE=c++_shared
+          cmake --build . --config Release
+          cp build/libargon2_ffi.so android-x86_64/
+      - name: Cleanup action
+        run: rm -rf CMakeFiles/ CMakeCache.txt build/*
       - name: Build windows-amd64 dynamic library
         run: |
           cmake CMakeLists.txt -DCMAKE_TOOLCHAIN_FILE=mingw-w64-x86_64.cmake
@@ -118,9 +139,10 @@ jobs:
           zip -jr libargon2_ffi-linux-amd64.zip linux-amd64/*
           zip -jr libargon2_ffi-linux-arm64.zip linux-arm64/*
           zip -jr libargon2_ffi-android-arm64_v8a.zip android-arm64_v8a/*
+          zip -jr libargon2_ffi-android-x86_64.zip android-x86_64/*
           zip -jr libargon2_ffi-windows-amd64.zip windows-amd64/*
       - name: Copy archived files to releases
-        run: cp libargon2_ffi-linux-amd64.zip libargon2_ffi-linux-arm64.zip libargon2_ffi-android-arm64_v8a.zip libargon2_ffi-windows-amd64.zip releases/
+        run: cp libargon2_ffi-linux-amd64.zip libargon2_ffi-linux-arm64.zip libargon2_ffi-android-arm64_v8a.zip libargon2_ffi-android-x86_64.zip libargon2_ffi-windows-amd64.zip releases/
       - uses: actions/upload-artifact@v3
         with:
           name: linux-artifacts
@@ -138,13 +160,14 @@ jobs:
           - name: Prepare releases directory
             run: |
               mkdir releases
-              cp argon2_ffi.xcframework.zip libargon2_ffi-darwin-universal.zip libargon2_ffi-wasm.zip libargon2_ffi-linux-amd64.zip libargon2_ffi-linux-arm64.zip libargon2_ffi-android-arm64_v8a.zip libargon2_ffi-windows-amd64.zip releases/
+              cp argon2_ffi.xcframework.zip libargon2_ffi-darwin-universal.zip libargon2_ffi-wasm.zip libargon2_ffi-linux-amd64.zip libargon2_ffi-linux-arm64.zip libargon2_ffi-android-arm64_v8a.zip libargon2_ffi-android-x86_64.zip libargon2_ffi-windows-amd64.zip releases/
           - name: Generate checksums
             run: |
               cd releases
+              echo $(sha256sum *)
               echo $(sha256sum *) >> SHA256CHECKSUMS.txt
           - name: Upload files to a GitHub release
-            uses: svenstaro/upload-release-action@2.5.0
+            uses: svenstaro/upload-release-action@2.6.1
             with:
               repo_token: ${{ secrets.GITHUB_TOKEN }}
               file: releases/*
